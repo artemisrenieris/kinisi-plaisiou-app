@@ -55,6 +55,18 @@ h1 {
   font-size: 1.36rem;
 }
 
+.deploy-test-badge {
+  margin: -0.1rem 0 0.4rem;
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  background: #d00000;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+}
+
 label {
   font-size: 0.96rem;
   font-weight: 600;
