@@ -16,7 +16,6 @@ const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 const slowBtn = document.getElementById("slowBtn");
 const miniPlayBtn = document.getElementById("miniPlayBtn");
-const miniPauseBtn = document.getElementById("miniPauseBtn");
 const miniResetBtn = document.getElementById("miniResetBtn");
 const miniSlowBtn = document.getElementById("miniSlowBtn");
 const phPanel = document.getElementById("phPanel");
@@ -302,6 +301,7 @@ function tick(timestamp) {
     }
   }
 
+  syncTransportLabels();
   updateReadouts();
   drawScene();
   requestAnimationFrame(tick);
@@ -323,6 +323,10 @@ function setPhExpanded(expanded) {
   phToggleBtn.textContent = state.phExpanded ? "-" : "+";
 }
 
+function syncTransportLabels() {
+  miniPlayBtn.textContent = state.playing ? "Pause" : "Start";
+}
+
 function runPlay() {
   if (state.s >= state.planeLength) {
     state.s = 0;
@@ -332,14 +336,17 @@ function runPlay() {
     state.impactSpeed = null;
   }
   state.playing = true;
+  syncTransportLabels();
 }
 
 function runPause() {
   state.playing = false;
+  syncTransportLabels();
 }
 
 function runReset() {
   resetMotion();
+  syncTransportLabels();
   updateReadouts();
 }
 
@@ -370,6 +377,7 @@ function syncInputs() {
     state.impactSpeed = null;
   }
   state.a = computeAcceleration();
+  syncTransportLabels();
   updateReadouts();
 }
 
@@ -402,11 +410,11 @@ resetBtn.addEventListener("click", () => {
 });
 
 miniPlayBtn.addEventListener("click", () => {
-  runPlay();
-});
-
-miniPauseBtn.addEventListener("click", () => {
-  runPause();
+  if (state.playing) {
+    runPause();
+  } else {
+    runPlay();
+  }
 });
 
 miniResetBtn.addEventListener("click", () => {
