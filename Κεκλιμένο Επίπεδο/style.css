@@ -397,7 +397,4 @@ button:active {
     font-size: 0.72rem;
   }
 
-  #simCanvas {
-    aspect-ratio: 980 / 700;
-  }
 }
