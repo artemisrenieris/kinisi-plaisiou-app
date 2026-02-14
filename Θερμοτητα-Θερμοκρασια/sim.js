@@ -9,9 +9,12 @@ const hotValue = document.getElementById("hotValue");
 const coldValue = document.getElementById("coldValue");
 const startBtn = document.getElementById("startBtn");
 const resetBtn = document.getElementById("resetBtn");
+const lossesToggle = document.getElementById("lossesToggle");
 const statusText = document.getElementById("statusText");
 const timeValue = document.getElementById("timeValue");
 const eqValue = document.getElementById("eqValue");
+const delta1Value = document.getElementById("delta1Value");
+const delta2Value = document.getElementById("delta2Value");
 
 const state = {
   running: false,
@@ -22,6 +25,8 @@ const state = {
   initCold: Number(coldSlider.value),
   eqReached: false,
   eqTime: null,
+  eqTemp: null,
+  coldMonotonic: Number(coldSlider.value),
   contactProgress: 0,
   postEqHold: 2.5,
   lastTimestamp: null,
@@ -30,7 +35,12 @@ const state = {
   particles: []
 };
 
-const transferK = 0.42;
+const transferK = 0.28;
+const ambientT = 22;
+const lossKHot = 0.07;
+const lossKCold = 0.05;
+const lossKEqual = 0.06;
+const contactDuration = 1.35;
 const containerW = 180;
 const containerH = 120;
 const containerBaseY = 52;
@@ -63,6 +73,8 @@ function initStateFromInputs() {
   state.coldT = state.initCold;
   state.eqReached = false;
   state.eqTime = null;
+  state.eqTemp = null;
+  state.coldMonotonic = state.initCold;
   state.contactProgress = 0;
   state.lastTimestamp = null;
   state.hotPoints = [{ t: 0, T: state.hotT }];
@@ -73,8 +85,24 @@ function initStateFromInputs() {
   coldValue.textContent = String(state.initCold);
   statusText.textContent = "Έτοιμο";
   timeValue.textContent = "0.00";
-  eqValue.textContent = ((state.initHot + state.initCold) / 2).toFixed(2) + " °C";
+  delta1Value.textContent = "-";
+  delta2Value.textContent = "-";
+  if (lossesToggle.checked) {
+    eqValue.textContent = "Θα προκύψει (με απώλειες)";
+  } else {
+    eqValue.textContent = ((state.initHot + state.initCold) / 2).toFixed(2) + " °C";
+  }
   startBtn.textContent = "Start";
+}
+
+function formatDelta(delta) {
+  const sign = delta > 0 ? "+" : "";
+  return `${sign}${delta.toFixed(2)} °C`;
+}
+
+function setFinalDeltas() {
+  delta1Value.textContent = formatDelta(state.hotT - state.initHot);
+  delta2Value.textContent = formatDelta(state.coldT - state.initCold);
 }
 
 function addPointIfNeeded() {
@@ -89,7 +117,7 @@ function spawnHeatParticle(leftX, rightX, y, bandHalf) {
   state.particles.push({
     x: leftX + 2,
     y: y + (Math.random() - 0.5) * bandHalf * 2,
-    v: 170 + Math.random() * 90,
+    v: 95 + Math.random() * 45,
     endX: rightX - 2
   });
 }
@@ -118,28 +146,64 @@ function update(dt) {
     return;
   }
 
-  state.t += dt;
-  state.contactProgress = clamp(state.contactProgress + dt / 1.0, 0, 1);
+  state.contactProgress = clamp(state.contactProgress + dt / contactDuration, 0, 1);
 
   if (state.contactProgress >= 1) {
+    state.t += dt;
     const delta = state.hotT - state.coldT;
-    const flow = transferK * delta * dt;
+    const flow = Math.min(transferK * delta * dt, delta * 0.5);
     state.hotT -= flow;
     state.coldT += flow;
-  }
+    if (lossesToggle.checked) {
+      state.hotT += (ambientT - state.hotT) * lossKHot * dt;
+      state.coldT += (ambientT - state.coldT) * lossKCold * dt;
 
-  addPointIfNeeded();
+      // Διδακτική προσαρμογή: το ψυχρό δοχείο δεν κάνει "κορυφή και πτώση".
+      state.coldT = Math.max(state.coldT, state.coldMonotonic);
+      state.coldMonotonic = state.coldT;
 
-  if (!state.eqReached && Math.abs(state.hotT - state.coldT) < 0.2 && state.contactProgress >= 1) {
-    state.eqReached = true;
-    state.eqTime = state.t;
-    statusText.textContent = "Θερμική ισορροπία";
-  }
+      if (state.coldT >= state.hotT) {
+        const eqT = state.coldT;
+        state.hotT = eqT;
+        state.coldT = eqT;
+      }
+    }
 
-  if (state.eqReached && state.t - state.eqTime >= state.postEqHold) {
-    state.running = false;
-    statusText.textContent = "Ολοκληρώθηκε";
-    startBtn.textContent = "Start";
+    addPointIfNeeded();
+
+    if (!state.eqReached && Math.abs(state.hotT - state.coldT) < 0.2) {
+      state.eqReached = true;
+      state.eqTime = state.t;
+      const eqT = (state.hotT + state.coldT) / 2;
+      state.eqTemp = eqT;
+      state.hotT = eqT;
+      state.coldT = eqT;
+      statusText.textContent = "Θερμική ισορροπία";
+      eqValue.textContent = eqT.toFixed(2) + " °C";
+
+      if (lossesToggle.checked) {
+        setFinalDeltas();
+        state.running = false;
+        startBtn.textContent = "Start";
+        return;
+      }
+    }
+
+    if (state.eqReached) {
+      let eqT = (state.hotT + state.coldT) / 2;
+      if (lossesToggle.checked) {
+        eqT += (ambientT - eqT) * lossKEqual * dt;
+      }
+      state.hotT = eqT;
+      state.coldT = eqT;
+    }
+
+    if (state.eqReached && state.t - state.eqTime >= state.postEqHold) {
+      setFinalDeltas();
+      state.running = false;
+      statusText.textContent = "Ολοκληρώθηκε";
+      startBtn.textContent = "Start";
+    }
   }
 }
 
@@ -173,36 +237,41 @@ function drawContainer(x, y, w, h, temp, title) {
 }
 
 function drawHeatFlow(contactX0, contactX1, centerY) {
-  const x0 = contactX0 - 6;
-  const x1 = Math.max(contactX1 + 6, x0 + 22);
-  const bandHalf = 11;
+  const x0 = contactX0 - 62;
+  const x1 = Math.max(contactX1 + 62, x0 + 140);
+  const bandHalf = 24;
 
-  simCtx.fillStyle = "rgba(245, 158, 11, 0.13)";
+  simCtx.fillStyle = "rgba(245, 158, 11, 0.2)";
   simCtx.beginPath();
   simCtx.roundRect(x0, centerY - bandHalf, x1 - x0, bandHalf * 2, 10);
   simCtx.fill();
 
-  simCtx.strokeStyle = "#f59e0b";
-  simCtx.lineWidth = 3;
+  simCtx.strokeStyle = "rgba(245, 158, 11, 0.85)";
+  simCtx.lineWidth = 4;
   simCtx.beginPath();
   simCtx.moveTo(x0, centerY);
   simCtx.lineTo(x1, centerY);
   simCtx.stroke();
 
-  const arrowX = x1 - 8;
-  simCtx.fillStyle = "#f59e0b";
-  simCtx.beginPath();
-  simCtx.moveTo(arrowX, centerY);
-  simCtx.lineTo(arrowX - 14, centerY - 8);
-  simCtx.lineTo(arrowX - 14, centerY + 8);
-  simCtx.closePath();
-  simCtx.fill();
+  const step = 30;
+  for (let ax = x0 + 16; ax < x1 - 10; ax += step) {
+    simCtx.fillStyle = "rgba(245, 158, 11, 0.95)";
+    simCtx.beginPath();
+    simCtx.moveTo(ax + 10, centerY);
+    simCtx.lineTo(ax - 2, centerY - 7);
+    simCtx.lineTo(ax - 2, centerY + 7);
+    simCtx.closePath();
+    simCtx.fill();
+  }
 
   state.particles.forEach((p) => {
-    simCtx.fillStyle = "rgba(245, 158, 11, 0.9)";
+    simCtx.shadowColor = "rgba(245, 158, 11, 0.55)";
+    simCtx.shadowBlur = 8;
+    simCtx.fillStyle = "rgba(255, 184, 28, 0.95)";
     simCtx.beginPath();
-    simCtx.arc(p.x, p.y, 3.3, 0, Math.PI * 2);
+    simCtx.arc(p.x, p.y, 4.8, 0, Math.PI * 2);
     simCtx.fill();
+    simCtx.shadowBlur = 0;
   });
 }
 
@@ -214,13 +283,14 @@ function drawSim() {
   const w = containerW;
   const h = containerH;
   const baseY = containerBaseY;
-  const leftBaseX = sideMargin;
-  const rightBaseX = simCanvas.width - sideMargin - w;
-  const maxGap = rightBaseX - (leftBaseX + w);
-  const gap = maxGap * (1 - state.contactProgress);
+  const leftStartX = sideMargin;
+  const rightStartX = simCanvas.width - sideMargin - w;
+  const centerX = simCanvas.width / 2;
+  const leftTargetX = centerX - w;
+  const rightTargetX = centerX;
 
-  const leftX = leftBaseX;
-  const rightX = leftBaseX + w + gap;
+  const leftX = leftStartX + (leftTargetX - leftStartX) * state.contactProgress;
+  const rightX = rightStartX + (rightTargetX - rightStartX) * state.contactProgress;
 
   drawContainer(leftX, baseY, w, h, state.hotT, "Θερμό δοχείο");
   drawContainer(rightX, baseY, w, h, state.coldT, "Ψυχρό δοχείο");
@@ -243,10 +313,11 @@ function drawGraph() {
   const W = graphCanvas.width - m.l - m.r;
   const H = graphCanvas.height - m.t - m.b;
 
+  const minTime = 0;
   const maxTime = Math.max(8, state.t + 0.8);
   const minT = 0;
   const maxT = 100;
-  const x = (t) => m.l + (t / maxTime) * W;
+  const x = (t) => m.l + ((t - minTime) / (maxTime - minTime)) * W;
   const y = (T) => m.t + H - ((T - minT) / (maxT - minT)) * H;
 
   graphCtx.strokeStyle = "#b9cbe0";
@@ -261,6 +332,31 @@ function drawGraph() {
   graphCtx.font = "12px Trebuchet MS";
   graphCtx.fillText("Θερμοκρασία (°C)", m.l - 40, m.t - 6);
   graphCtx.fillText("Χρόνος (s)", m.l + W - 52, m.t + H + 28);
+
+  function drawRefLine(temp, label, color) {
+    const yy = y(temp);
+    graphCtx.save();
+    graphCtx.strokeStyle = color;
+    graphCtx.setLineDash([6, 5]);
+    graphCtx.lineWidth = 1.4;
+    graphCtx.beginPath();
+    graphCtx.moveTo(m.l, yy);
+    graphCtx.lineTo(m.l + W, yy);
+    graphCtx.stroke();
+    graphCtx.setLineDash([]);
+    graphCtx.fillStyle = color;
+    graphCtx.font = "700 11px Trebuchet MS";
+    graphCtx.fillText(`${label}: ${temp.toFixed(1)}°C`, m.l + 6, yy - 5);
+    graphCtx.restore();
+  }
+
+  drawRefLine(state.initHot, "T αρχ. θερμού", "#b91c1c");
+  drawRefLine(state.initCold, "T αρχ. ψυχρού", "#1d4ed8");
+  if (state.eqReached && state.eqTemp !== null) {
+    drawRefLine(state.eqTemp, "T ισορρ.", "#0f766e");
+  } else if (!lossesToggle.checked) {
+    drawRefLine((state.initHot + state.initCold) / 2, "T ισορρ.", "#0f766e");
+  }
 
   graphCtx.strokeStyle = "#d90429";
   graphCtx.lineWidth = 2.6;
@@ -299,17 +395,21 @@ function tick(ts) {
 
   const leftBaseX = sideMargin;
   const w = containerW;
-  const rightBaseX = simCanvas.width - sideMargin - w;
-  const maxGap = rightBaseX - (leftBaseX + w);
-  const gap = maxGap * (1 - state.contactProgress);
-  const rightX = leftBaseX + w + gap;
-  const flowStartX = leftBaseX + w - 6;
+  const rightStartX = simCanvas.width - sideMargin - w;
+  const centerX = simCanvas.width / 2;
+  const leftTargetX = centerX - w;
+  const rightTargetX = centerX;
+  const leftX = leftBaseX + (leftTargetX - leftBaseX) * state.contactProgress;
+  const rightX = rightStartX + (rightTargetX - rightStartX) * state.contactProgress;
+  const flowStartX = leftX + w - 8;
   const flowEndX = Math.max(rightX + 6, flowStartX + 22);
-  updateParticles(dt, flowStartX, flowEndX, containerBaseY + containerH / 2, 10);
+  updateParticles(dt, flowStartX, flowEndX, containerBaseY + containerH / 2, 24);
   update(dt);
 
   timeValue.textContent = state.t.toFixed(2);
-  eqValue.textContent = ((state.initHot + state.initCold) / 2).toFixed(2) + " °C";
+  if (!state.eqReached && !lossesToggle.checked) {
+    eqValue.textContent = ((state.initHot + state.initCold) / 2).toFixed(2) + " °C";
+  }
 
   drawSim();
   drawGraph();
@@ -338,6 +438,12 @@ hotSlider.addEventListener("input", () => {
 });
 
 coldSlider.addEventListener("input", () => {
+  if (!state.running) {
+    initStateFromInputs();
+  }
+});
+
+lossesToggle.addEventListener("change", () => {
   if (!state.running) {
     initStateFromInputs();
   }

@@ -18,6 +18,11 @@
         <label for="coldSlider">Αρχική θερμοκρασία ψυχρού δοχείου: <span id="coldValue">20</span>°C</label>
         <input id="coldSlider" type="range" min="0" max="40" step="1" value="20" />
 
+        <label class="check-row" for="lossesToggle">
+          <input id="lossesToggle" type="checkbox" />
+          Απώλειες ενέργειας προς περιβάλλον
+        </label>
+
         <div class="btn-row">
           <button id="startBtn" type="button">Start</button>
           <button id="resetBtn" type="button">Reset</button>
@@ -26,6 +31,8 @@
         <p class="status">Κατάσταση: <span id="statusText">Έτοιμο</span></p>
         <p class="status">Χρόνος: <span id="timeValue">0.00</span> s</p>
         <p class="status">Θερμική ισορροπία: <span id="eqValue">-</span></p>
+        <p class="status">Δθ<sub>1</sub> (θερμό δοχείο): <span id="delta1Value">-</span></p>
+        <p class="status">Δθ<sub>2</sub> (ψυχρό δοχείο): <span id="delta2Value">-</span></p>
       </section>
 
       <section class="panel sim-area">
