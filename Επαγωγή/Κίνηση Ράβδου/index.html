@@ -14,9 +14,8 @@
 
         <label for="scenarioSelect">Σενάριο</label>
         <select id="scenarioSelect">
+          <option value="with-force" selected>Σταθερή εξωτερική δύναμη F</option>
           <option value="with-u0">Με αρχική ταχύτητα (F=0)</option>
-          <option value="no-u0">Χωρίς αρχική ταχύτητα (F=0)</option>
-          <option value="with-force">Σταθερή εξωτερική δύναμη F</option>
           <option value="uniform-accel">Ομαλά μεταβαλλόμενη κίνηση (σταθερή α)</option>
           <option value="vertical-gravity">Κατακόρυφη κίνηση με βάρος</option>
         </select>
@@ -47,13 +46,6 @@
           Εμφάνιση διανυσμάτων δυνάμεων
         </label>
 
-        <div class="btn-row">
-          <button id="playBtn" type="button">Play</button>
-          <button id="pauseBtn" type="button">Pause</button>
-          <button id="resetBtn" type="button">Reset</button>
-          <button id="slowBtn" type="button">Slow motion: Off</button>
-        </div>
-
         <div class="measurements">
           <h2>Μετρήσεις</h2>
           <p>Χρόνος t: <span id="tValue">0.00</span> s</p>
@@ -71,6 +63,12 @@
 
       <section class="panel sim-area">
         <canvas id="simCanvas" width="980" height="560" aria-label="Rod in magnetic field simulation"></canvas>
+        <div class="canvas-controls">
+          <button id="playBtn" type="button">Play</button>
+          <button id="pauseBtn" type="button">Pause</button>
+          <button id="resetBtn" type="button">Reset</button>
+          <button id="slowBtn" type="button">Slow motion: Off</button>
+        </div>
 
         <div class="legend">
           <span><i class="fext"></i>F<sub>ext</sub></span>

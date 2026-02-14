@@ -112,13 +112,7 @@ function hasReachedTerminal() {
 }
 
 function applyScenarioDefaults() {
-  if (state.scenario === "with-u0") {
-    state.u = state.u0;
-  } else if (state.scenario === "no-u0") {
-    state.u = 0;
-  } else {
-    state.u = state.u0;
-  }
+  state.u = state.u0;
 }
 
 function syncSlidersUI() {
@@ -127,7 +121,7 @@ function syncSlidersUI() {
   const verticalGravity = state.scenario === "vertical-gravity";
   fSlider.disabled = !withForce;
   aSlider.disabled = !uniformAccel;
-  u0Slider.disabled = state.scenario === "no-u0";
+  u0Slider.disabled = false;
 
   bValue.textContent = state.B.toFixed(2);
   lValue.textContent = state.ell.toFixed(2);
