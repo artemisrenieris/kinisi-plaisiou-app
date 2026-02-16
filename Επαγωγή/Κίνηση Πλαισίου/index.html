@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Επαγωγή - Κίνηση Πλαισίου</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="top-copyright">© 2026 Artemis Renieris. All rights reserved.</div>
+    <main class="layout">
+      <section class="panel controls">
+        <h1>Κίνηση Πλαισίου σε Ομογενές Μαγνητικό Πεδίο</h1>
+
+        <label for="bSlider">Μαγνητικό πεδίο B: <span id="bValue">0.80</span> T</label>
+        <input id="bSlider" type="range" min="0.1" max="2.5" step="0.05" value="0.80" />
+        <button id="bDirBtn" type="button">B: προς τα μέσα (×)</button>
+
+        <label for="hSlider">Ύψος πλαισίου ℓ: <span id="hValue">1.20</span> m</label>
+        <input id="hSlider" type="range" min="0.8" max="1.5" step="0.05" value="1.20" />
+
+        <label for="wSlider">Πλάτος πλαισίου a: <span id="wValue">1.20</span> m</label>
+        <input id="wSlider" type="range" min="0.8" max="1.5" step="0.05" value="1.20" />
+
+        <label for="rSlider">Αντίσταση κυκλώματος R: <span id="rValue">0.40</span> Ω</label>
+        <input id="rSlider" type="range" min="0.1" max="2.0" step="0.05" value="0.40" />
+
+        <label for="uSlider">Σταθερή ταχύτητα υ: <span id="uSetValue">1.20</span> m/s</label>
+        <input id="uSlider" type="range" min="0.2" max="4.0" step="0.1" value="1.20" />
+
+        <label class="check-row" for="vectorsToggle">
+          <input id="vectorsToggle" type="checkbox" checked />
+          Εμφάνιση διανυσμάτων
+        </label>
+        <label class="check-row" for="currentVectorsToggle">
+          <input id="currentVectorsToggle" type="checkbox" checked />
+          Εμφάνιση διανυσμάτων έντασης ρεύματος
+        </label>
+
+        <div class="measurements">
+          <h2>Μετρήσεις</h2>
+          <p>Χρόνος t: <span id="tValue">0.00</span> s</p>
+          <p>Θέση πλαισίου x: <span id="xValue">0.00</span> m</p>
+          <p>Ταχύτητα υ: <span id="uValue">0.00</span> m/s</p>
+          <p>Μαγνητική ροή Φ: <span id="phiValue">0.00</span> Wb</p>
+          <p>Επαγόμενη ΗΕΔ ε: <span id="eValue">0.00</span> V</p>
+          <p>Ρεύμα I: <span id="iValue">0.00</span> A</p>
+          <p>Φορά ρεύματος: <span id="currentDirValue">-</span></p>
+          <p>Μαγνητική δύναμη |F<sub>L</sub>|: <span id="fmagValue">0.00</span> N</p>
+          <p>Πλάτος μέσα στο Β: <span id="inFieldValue">0.00</span> m</p>
+          <p id="statusValue" class="status">Κατάσταση: Εκτός πεδίου.</p>
+        </div>
+      </section>
+
+      <section class="panel sim-area">
+        <canvas id="simCanvas" width="980" height="560" aria-label="Frame entering magnetic field simulation"></canvas>
+        <div class="canvas-controls">
+          <button id="playPauseBtn" type="button">Play</button>
+          <button id="resetBtn" type="button">Reset</button>
+          <button id="slowBtn" type="button">Slow motion: Off</button>
+        </div>
+
+        <div class="legend">
+          <span><i class="fmag"></i>F<sub>L</sub> (αντίθετη της κίνησης)</span>
+          <span><i class="vel"></i>υ</span>
+          <span><i class="bvec"></i>B</span>
+        </div>
+
+        <div class="instructions">
+          <h2>Σχέσεις (Γ' Λυκείου)</h2>
+          <p>Φ = B·A<sub>εντός</sub> = B·(ℓ·x<sub>εντός</sub>)</p>
+          <p>ε = -dΦ/dt, I = ε/R</p>
+          <p>Όσο εισέρχεται/εξέρχεται: |ε| = Bℓυ</p>
+          <p>Όταν είναι όλο μέσα ή όλο έξω από το Β: ε = 0</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="sim.js"></script>
+  </body>
+</html>
