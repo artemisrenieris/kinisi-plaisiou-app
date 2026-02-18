@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="el">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#005f73" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,6 +13,7 @@
   </head>
   <body>
     <div class="top-copyright">© 2026 Artemis Renieris. All rights reserved.</div>
+
     <main class="layout">
       <section class="panel controls">
         <h1>Κίνηση Πλαισίου σε Ομογενές Μαγνητικό Πεδίο</h1>
@@ -37,6 +38,7 @@
           <input id="vectorsToggle" type="checkbox" checked />
           Εμφάνιση διανυσμάτων
         </label>
+
         <label class="check-row" for="currentVectorsToggle">
           <input id="currentVectorsToggle" type="checkbox" checked />
           Εμφάνιση διανυσμάτων έντασης ρεύματος
@@ -59,6 +61,7 @@
 
       <section class="panel sim-area">
         <canvas id="simCanvas" width="980" height="560" aria-label="Frame entering magnetic field simulation"></canvas>
+
         <div class="canvas-controls">
           <button id="playPauseBtn" type="button">Play</button>
           <button id="resetBtn" type="button">Reset</button>
@@ -81,7 +84,7 @@
       </section>
     </main>
 
-    <script src="./sim.js"></script>
-    <script src="./pwa.js"></script>
+    <script defer src="./pwa.js"></script>
+    <script defer src="./sim.js"></script>
   </body>
 </html>
