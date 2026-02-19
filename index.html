@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="el">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#005f73" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,7 +13,6 @@
   </head>
   <body>
     <div class="top-copyright">© 2026 Artemis Renieris. All rights reserved.</div>
-
     <main class="layout">
       <section class="panel controls">
         <h1>Κίνηση Πλαισίου σε Ομογενές Μαγνητικό Πεδίο</h1>
@@ -38,7 +37,6 @@
           <input id="vectorsToggle" type="checkbox" checked />
           Εμφάνιση διανυσμάτων
         </label>
-
         <label class="check-row" for="currentVectorsToggle">
           <input id="currentVectorsToggle" type="checkbox" checked />
           Εμφάνιση διανυσμάτων έντασης ρεύματος
@@ -50,8 +48,8 @@
           <p>Θέση πλαισίου x: <span id="xValue">0.00</span> m</p>
           <p>Ταχύτητα υ: <span id="uValue">0.00</span> m/s</p>
           <p>Μαγνητική ροή Φ: <span id="phiValue">0.00</span> Wb</p>
-          <p>Επαγόμενη ΗΕΔ ε: <span id="eValue">0.00</span> V</p>
-          <p>Ρεύμα I: <span id="iValue">0.00</span> A</p>
+          <p>Επαγόμενη ΗΕΔ E<sub>επ</sub>: <span id="eValue">0.00</span> V</p>
+          <p>Ρεύμα I<sub>επ</sub>: <span id="iValue">0.00</span> A</p>
           <p>Φορά ρεύματος: <span id="currentDirValue">-</span></p>
           <p>Μαγνητική δύναμη |F<sub>L</sub>|: <span id="fmagValue">0.00</span> N</p>
           <p>Πλάτος μέσα στο Β: <span id="inFieldValue">0.00</span> m</p>
@@ -61,12 +59,19 @@
 
       <section class="panel sim-area">
         <canvas id="simCanvas" width="980" height="560" aria-label="Frame entering magnetic field simulation"></canvas>
-
         <div class="canvas-controls">
           <button id="playPauseBtn" type="button">Play</button>
           <button id="resetBtn" type="button">Reset</button>
           <button id="slowBtn" type="button">Slow motion: Off</button>
+          <select id="graphModeSelect" aria-label="Επιλογή γραφικής">
+            <option value="i" selected>I<sub>επ</sub> - t</option>
+            <option value="e">E<sub>επ</sub> - t</option>
+            <option value="phi">Φ - t</option>
+            <option value="fl">F<sub>L</sub> - t</option>
+            <option value="x">x - t</option>
+          </select>
         </div>
+        <canvas id="diagCanvas" width="980" height="460" aria-label="Diagnostics charts and formulas"></canvas>
 
         <div class="legend">
           <span><i class="fmag"></i>F<sub>L</sub> (αντίθετη της κίνησης)</span>
@@ -77,9 +82,9 @@
         <div class="instructions">
           <h2>Σχέσεις (Γ' Λυκείου)</h2>
           <p>Φ = B·A<sub>εντός</sub> = B·(ℓ·x<sub>εντός</sub>)</p>
-          <p>ε = -dΦ/dt, I = ε/R</p>
-          <p>Όσο εισέρχεται/εξέρχεται: |ε| = Bℓυ</p>
-          <p>Όταν είναι όλο μέσα ή όλο έξω από το Β: ε = 0</p>
+          <p>E<sub>επ</sub> = -dΦ/dt, I<sub>επ</sub> = E<sub>επ</sub>/R</p>
+          <p>Όσο εισέρχεται/εξέρχεται: |E<sub>επ</sub>| = Bℓυ</p>
+          <p>Όταν είναι όλο μέσα ή όλο έξω από το Β: E<sub>επ</sub> = 0</p>
         </div>
       </section>
     </main>

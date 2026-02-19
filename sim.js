@@ -1,5 +1,7 @@
 const canvas = document.getElementById("simCanvas");
 const ctx = canvas.getContext("2d");
+const diagCanvas = document.getElementById("diagCanvas");
+const dctx = diagCanvas ? diagCanvas.getContext("2d") : null;
 
 const bSlider = document.getElementById("bSlider");
 const hSlider = document.getElementById("hSlider");
@@ -10,11 +12,11 @@ const vectorsToggle = document.getElementById("vectorsToggle");
 const currentVectorsToggle = document.getElementById("currentVectorsToggle");
 const bDirBtn = document.getElementById("bDirBtn");
 
-// Backward-compatible ids help when Netlify serves cached/older HTML.
 const playPauseBtn = document.getElementById("playPauseBtn") || document.getElementById("playBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 const slowBtn = document.getElementById("slowBtn");
+const graphModeSelect = document.getElementById("graphModeSelect");
 
 const bValue = document.getElementById("bValue");
 const hValue = document.getElementById("hValue");
@@ -35,9 +37,10 @@ const statusValue = document.getElementById("statusValue");
 
 const WORLD_LEFT = 0;
 const WORLD_RIGHT = 8;
-const FIELD_START = 3.2;
-const FIELD_END = 6.2;
+const FIELD_START = 3.1;
+const FIELD_END = 6.5;
 const BASE_TIME_SCALE = 0.75;
+const TRACE_MAX = 5000;
 
 const state = {
   B: Number(bSlider.value),
@@ -61,8 +64,31 @@ const state = {
   overlap: 0,
   dOverlapDt: 0,
   currentDir: "-",
+  pJoule: 0,
+  heatJ: 0,
+  graphMode: graphModeSelect ? graphModeSelect.value : "i",
+  trace: [],
+  yMin: -0.2,
+  yMax: 0.2,
+  tAxisMax: 8,
   lastTime: null
 };
+
+function graphSeriesConfig() {
+  switch (state.graphMode) {
+    case "e":
+      return { key: "e", label: "Eεπ(t) [V]", color: "#c1121f" };
+    case "phi":
+      return { key: "phi", label: "Φ(t) [Wb]", color: "#2a9d8f" };
+    case "fl":
+      return { key: "fl", label: "F_L(t) [N]", color: "#457b9d" };
+    case "x":
+      return { key: "x", label: "x(t) [m]", color: "#6a4c93" };
+    case "i":
+    default:
+      return { key: "i", label: "Iεπ(t) [A]", color: "#1d3557" };
+  }
+}
 
 function clamp(v, min, max) {
   return Math.min(max, Math.max(min, v));
@@ -84,6 +110,59 @@ function overlapRate(left, speed, width, start, end) {
     return -speed;
   }
   return 0;
+}
+
+function pushHistory() {
+  state.trace.push({
+    t: state.t,
+    i: state.I,
+    e: state.emf,
+    phi: state.phi,
+    fl: state.Fmag,
+    x: state.x
+  });
+  if (state.trace.length > TRACE_MAX) {
+    state.trace.shift();
+  }
+  updateTraceBounds();
+}
+
+function updateTraceBounds() {
+  if (state.trace.length === 0) {
+    state.yMin = -0.2;
+    state.yMax = 0.2;
+    state.tAxisMax = 8;
+    return;
+  }
+
+  const { key } = graphSeriesConfig();
+  const values = state.trace.map((p) => p[key]);
+  const vMin = Math.min(...values);
+  const vMax = Math.max(...values);
+  const span = Math.max(0.15, vMax - vMin);
+  const pad = 0.18 * span;
+
+  if (state.trace.length <= 1) {
+    state.yMin = vMin - pad;
+    state.yMax = vMax + pad;
+  } else {
+    state.yMin = Math.min(state.yMin, vMin - pad);
+    state.yMax = Math.max(state.yMax, vMax + pad);
+  }
+
+  state.tAxisMax = Math.max(8, state.t);
+}
+
+function resetTraceAtCurrentTime() {
+  state.trace = [{
+    t: state.t,
+    i: state.I,
+    e: state.emf,
+    phi: state.phi,
+    fl: state.Fmag,
+    x: state.x
+  }];
+  updateTraceBounds();
 }
 
 function syncSlidersUI() {
@@ -113,6 +192,8 @@ function recalcMeasured() {
 
   const inTransition = Math.abs(dOverlapDt) > 1e-6;
   state.Fmag = inTransition ? Math.abs(state.I) * state.B * state.h : 0;
+  state.pJoule = state.I * state.I * state.R;
+
   if (dOverlapDt > 1e-6) {
     state.currentDir = state.Bdir > 0 ? "Αντιωρολογιακά" : "Ωρολογιακά";
   } else if (dOverlapDt < -1e-6) {
@@ -188,6 +269,33 @@ function drawArrow(x, y, vx, vy, color, label) {
     ctx.font = "bold 13px Arial";
     ctx.fillText(label, tx + 6, ty - 6);
   }
+}
+
+function drawCanvasStatus(text) {
+  if (!text || text === "Κατάσταση: -") {
+    return;
+  }
+
+  const padX = 12;
+  const boxY = 10;
+  ctx.font = "bold 14px Arial";
+  const metrics = ctx.measureText(text);
+  const boxW = Math.min(canvas.width - 24, metrics.width + padX * 2);
+  const boxH = 28;
+  const boxX = (canvas.width - boxW) / 2;
+
+  ctx.fillStyle = "rgba(255,255,255,0.86)";
+  ctx.strokeStyle = "#b7c7da";
+  ctx.lineWidth = 1.2;
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+  ctx.fillStyle = "#1d3557";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, boxX + boxW / 2, boxY + boxH / 2 + 0.5, boxW - padX * 2);
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
 }
 
 function drawFieldPattern(x0, y0, w, h, intoPage) {
@@ -281,7 +389,7 @@ function drawScene() {
     }
     ctx.fillStyle = "#1d3557";
     ctx.font = "bold 14px Arial";
-    ctx.fillText(`I: ${state.currentDir}`, frameLeft, frameBottom + 30);
+    ctx.fillText(`Iεπ: ${state.currentDir}`, frameLeft, frameBottom + 30);
   }
 
   if (state.showVectors) {
@@ -289,7 +397,7 @@ function drawScene() {
     const centerY = (frameTop + frameBottom) / 2;
     drawArrow(frameRight + 20, centerY + 8, 72, 0, "#f77f00", "υ");
     if (state.Fmag > 0.0001) {
-      drawArrow(centerX, centerY + 30, -60, 0, "#457b9d", "Fₗ");
+      drawArrow(centerX, centerY + 30, -60, 0, "#457b9d", "F_L");
     }
   }
 
@@ -297,6 +405,206 @@ function drawScene() {
   ctx.font = "14px Arial";
   ctx.fillText(`x = ${state.x.toFixed(2)} m`, 40, 86);
   ctx.fillText(`Φ = ${state.phi.toFixed(3)} Wb`, 40, 108);
+  drawCanvasStatus(statusValue.textContent);
+}
+
+function drawMiniSeriesBox(x, y, w, h, label, points, key, color, minVal, maxVal, tMax) {
+  dctx.strokeStyle = "#b5c5d9";
+  dctx.fillStyle = "rgba(255,255,255,0.9)";
+  dctx.lineWidth = 1.2;
+  dctx.fillRect(x, y, w, h);
+  dctx.strokeRect(x, y, w, h);
+
+  dctx.fillStyle = "#2a3f5e";
+  dctx.font = "bold 14px Arial";
+  dctx.fillText(label, x + 8, y + 15);
+
+  const plotX = x + 56;
+  const plotY = y + 22;
+  const plotW = w - 64;
+  const plotH = h - 28;
+
+  if (points.length < 2 || maxVal - minVal < 1e-9 || tMax <= 0) {
+    return;
+  }
+
+  const toX = (t) => plotX + (t / tMax) * plotW;
+  const toY = (v) => plotY + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
+
+  const yTicks = 5;
+  dctx.font = "11px Arial";
+  dctx.fillStyle = "#34506f";
+  dctx.strokeStyle = "#d6e0eb";
+  dctx.lineWidth = 1;
+  for (let i = 0; i <= yTicks; i += 1) {
+    const frac = i / yTicks;
+    const yv = maxVal - frac * (maxVal - minVal);
+    const py = plotY + frac * plotH;
+    dctx.beginPath();
+    dctx.moveTo(plotX, py);
+    dctx.lineTo(plotX + plotW, py);
+    dctx.stroke();
+    dctx.fillText(yv.toFixed(2), x + 6, py + 4);
+  }
+
+  dctx.strokeStyle = color;
+  dctx.lineWidth = 2.6;
+  dctx.beginPath();
+  points.forEach((p, i) => {
+    const px = toX(p.t);
+    const py = toY(p[key]);
+    if (i === 0) {
+      dctx.moveTo(px, py);
+    } else {
+      dctx.lineTo(px, py);
+    }
+  });
+  dctx.stroke();
+
+  const latest = points[points.length - 1];
+  if (latest) {
+    const yNow = toY(latest[key]);
+    const valueNow = latest[key];
+
+    dctx.save();
+    dctx.setLineDash([5, 4]);
+    dctx.strokeStyle = "rgba(42, 63, 94, 0.55)";
+    dctx.lineWidth = 1.3;
+    dctx.beginPath();
+    dctx.moveTo(plotX, yNow);
+    dctx.lineTo(plotX + plotW, yNow);
+    dctx.stroke();
+    dctx.restore();
+
+    dctx.fillStyle = "#2a3f5e";
+    dctx.font = "bold 11px Arial";
+    dctx.textAlign = "right";
+    dctx.textBaseline = "middle";
+    dctx.fillText(valueNow.toFixed(2), plotX + plotW - 4, yNow - 8);
+    dctx.textAlign = "start";
+    dctx.textBaseline = "alphabetic";
+  }
+}
+
+function drawLiveBars(x, y, w, h) {
+  dctx.fillStyle = "rgba(255,255,255,0.92)";
+  dctx.strokeStyle = "#b5c5d9";
+  dctx.lineWidth = 1.2;
+  dctx.fillRect(x, y, w, h);
+  dctx.strokeRect(x, y, w, h);
+
+  const labels = ["|Eεπ|", "|Iεπ|", "|F_L|"];
+  const colors = ["#c1121f", "#1d3557", "#457b9d"];
+  const values = [Math.abs(state.emf), Math.abs(state.I), Math.abs(state.Fmag)];
+  const maxAbs = Math.max(1, ...values.map((v) => Math.abs(v)));
+  const zeroY = y + h * 0.86;
+  const innerPad = 10;
+  const gaugeW = 18;
+  const gap = 10;
+  const barAreaW = Math.max(90, w - innerPad * 3 - gaugeW - gap * 2);
+  const barW = Math.max(20, barAreaW / 3);
+  const startX = x + innerPad;
+
+  dctx.strokeStyle = "#c8d7e8";
+  dctx.beginPath();
+  dctx.moveTo(x + 8, zeroY);
+  dctx.lineTo(x + w - 8, zeroY);
+  dctx.stroke();
+
+  values.forEach((v, i) => {
+    const bh = (Math.abs(v) / maxAbs) * (h * 0.62);
+    const bx = startX + i * (barW + gap);
+    const by = zeroY - bh;
+    dctx.fillStyle = colors[i];
+    dctx.fillRect(bx, by, barW, bh);
+    dctx.fillStyle = "#233c5b";
+    dctx.font = "bold 12px Arial";
+    dctx.fillText(labels[i], bx, y + h - 10);
+    dctx.fillText(v.toFixed(2), bx, by - 5);
+  });
+
+  const gaugeX = x + w - innerPad - gaugeW;
+  const gaugeY = y + 14;
+  const gaugeH = h - 36;
+  const qMax = Math.max(5, state.heatJ * 1.2);
+  const fill = (state.heatJ / qMax) * gaugeH;
+
+  dctx.strokeStyle = "#6b7f9d";
+  dctx.lineWidth = 2;
+  dctx.strokeRect(gaugeX, gaugeY, gaugeW, gaugeH);
+  dctx.fillStyle = "#ff7b00";
+  dctx.fillRect(gaugeX + 2, gaugeY + gaugeH - fill + 2, gaugeW - 4, Math.max(0, fill - 4));
+  dctx.fillStyle = "#233c5b";
+  dctx.font = "bold 12px Arial";
+  dctx.fillText("Q", gaugeX + 3, gaugeY - 4);
+  dctx.fillText(`${state.heatJ.toFixed(1)} J`, gaugeX - 18, gaugeY + gaugeH + 14);
+}
+
+function drawFormulaBox(x, y, w, h) {
+  dctx.fillStyle = "rgba(255,255,255,0.93)";
+  dctx.strokeStyle = "#b5c5d9";
+  dctx.lineWidth = 1.2;
+  dctx.fillRect(x, y, w, h);
+  dctx.strokeRect(x, y, w, h);
+
+  dctx.fillStyle = "#223854";
+  dctx.font = "bold 14px Arial";
+  dctx.fillText("Live σχέσεις", x + 8, y + 15);
+  dctx.font = w < 300 ? "12px Arial" : "13px Arial";
+
+  const compact = w < 300;
+  const l1 = compact
+    ? `Φ = ${state.phi.toFixed(3)} Wb`
+    : `Φ = B·(ℓ·xεντός) = ${state.B.toFixed(2)}·(${state.h.toFixed(2)}·${state.overlap.toFixed(2)}) = ${state.phi.toFixed(3)} Wb`;
+  const l2 = compact
+    ? `Eεπ = ${state.emf.toFixed(2)} V`
+    : `Eεπ = -dΦ/dt = ${state.emf.toFixed(2)} V`;
+  const l3 = compact
+    ? `Iεπ = ${state.I.toFixed(2)} A`
+    : `Iεπ = Eεπ/R = ${state.emf.toFixed(2)}/${state.R.toFixed(2)} = ${state.I.toFixed(2)} A`;
+  const l4 = compact
+    ? `F_L = ${state.Fmag.toFixed(2)} N`
+    : `F_L = B·Iεπ·ℓ = ${state.B.toFixed(2)}·${Math.abs(state.I).toFixed(2)}·${state.h.toFixed(2)} = ${state.Fmag.toFixed(2)} N`;
+
+  dctx.fillText(l1, x + 8, y + 34);
+  dctx.fillText(l2, x + 8, y + 52);
+  dctx.fillText(l3, x + 8, y + 70);
+  dctx.fillText(l4, x + 8, y + 88);
+}
+
+function drawDiagnosticsPanel() {
+  if (!dctx) {
+    return;
+  }
+
+  dctx.clearRect(0, 0, diagCanvas.width, diagCanvas.height);
+
+  const pad = 12;
+  const graphCfg = graphSeriesConfig();
+  const narrow = diagCanvas.width < 760;
+
+  if (narrow) {
+    const fullW = diagCanvas.width - pad * 2;
+    const graphH = Math.floor(diagCanvas.height * 0.47);
+    const barsH = Math.floor(diagCanvas.height * 0.23);
+    const formulaH = diagCanvas.height - graphH - barsH - pad * 4;
+    drawMiniSeriesBox(pad, pad, fullW, graphH, graphCfg.label, state.trace, graphCfg.key, graphCfg.color, state.yMin, state.yMax, state.tAxisMax);
+    drawLiveBars(pad, pad * 2 + graphH, fullW, barsH);
+    drawFormulaBox(pad, pad * 3 + graphH + barsH, fullW, formulaH);
+  } else {
+    const leftW = Math.floor(diagCanvas.width * 0.5);
+    const rightW = diagCanvas.width - leftW - pad * 3;
+    const gx = pad;
+    const gy = pad;
+    const gw = leftW;
+    const graphH = diagCanvas.height - pad * 2;
+    drawMiniSeriesBox(gx, gy, gw, graphH, graphCfg.label, state.trace, graphCfg.key, graphCfg.color, state.yMin, state.yMax, state.tAxisMax);
+
+    const rightX = gx + gw + pad;
+    const barsH = 165;
+    drawLiveBars(rightX, gy, rightW, barsH);
+    drawFormulaBox(rightX, gy + barsH + 8, rightW, diagCanvas.height - (gy + barsH + 8) - pad);
+  }
 }
 
 function integrate(dt) {
@@ -308,6 +616,8 @@ function integrate(dt) {
   }
 
   recalcMeasured();
+  state.heatJ += state.pJoule * dt;
+  pushHistory();
 }
 
 function tick(timestamp) {
@@ -328,6 +638,7 @@ function tick(timestamp) {
   syncPlayPauseUI();
   updateMeasurements();
   drawScene();
+  drawDiagnosticsPanel();
   requestAnimationFrame(tick);
 }
 
@@ -336,10 +647,17 @@ function resetSimulation() {
   state.t = 0;
   state.x = 0.7;
   state.u = state.uSet;
+  state.heatJ = 0;
+  state.trace = [];
+  state.yMin = -0.2;
+  state.yMax = 0.2;
+  state.tAxisMax = 8;
   recalcMeasured();
+  resetTraceAtCurrentTime();
   syncPlayPauseUI();
   updateMeasurements();
   drawScene();
+  drawDiagnosticsPanel();
 }
 
 bSlider.addEventListener("input", () => {
@@ -361,6 +679,10 @@ rSlider.addEventListener("input", () => {
 uSlider.addEventListener("input", () => {
   state.uSet = Number(uSlider.value);
   state.u = state.uSet;
+  if (!state.playing && state.t === 0) {
+    recalcMeasured();
+    resetTraceAtCurrentTime();
+  }
 });
 
 if (vectorsToggle) {
@@ -404,6 +726,15 @@ slowBtn.addEventListener("click", () => {
   slowBtn.textContent = `Slow motion: ${state.slowMotion ? "On" : "Off"}`;
   slowBtn.classList.toggle("slow-on", state.slowMotion);
 });
+
+if (graphModeSelect) {
+  graphModeSelect.addEventListener("change", () => {
+    state.graphMode = graphModeSelect.value;
+    state.yMin = -0.2;
+    state.yMax = 0.2;
+    updateTraceBounds();
+  });
+}
 
 resetSimulation();
 requestAnimationFrame(tick);
