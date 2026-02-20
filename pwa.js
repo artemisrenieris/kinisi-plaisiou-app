@@ -1,7 +1,9 @@
+const APP_VERSION = "v4";
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./service-worker.js")
+      .register(`./service-worker.js?${APP_VERSION}`, { updateViaCache: "none" })
       .then((registration) => {
         registration.update().catch(() => {});
       })
