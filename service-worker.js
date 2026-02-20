@@ -1,4 +1,4 @@
-const CACHE_NAME = "kinisi-plaisiou-v2";
+const CACHE_NAME = "kinisi-plaisiou-v3";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
