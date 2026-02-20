@@ -255,15 +255,14 @@ function updateMeasurements() {
 }
 
 function worldToCanvasX(xWorld) {
+  const pad = 70;
   const viewW = canvas.getBoundingClientRect().width || 980;
-  const pad = Math.max(24, Math.min(70, viewW * 0.075));
   return pad + ((xWorld - WORLD_LEFT) / (WORLD_RIGHT - WORLD_LEFT)) * (viewW - 2 * pad);
 }
 
 function worldToCanvasY(yNorm) {
-  const viewH = canvas.getBoundingClientRect().height || 560;
-  const top = Math.max(32, Math.min(110, viewH * 0.2));
-  const bottom = Math.max(top + 56, Math.min(viewH - 20, viewH * 0.84));
+  const top = 110;
+  const bottom = 470;
   return top + yNorm * (bottom - top);
 }
 
@@ -304,13 +303,12 @@ function drawCanvasStatus(text) {
   }
 
   const padX = 12;
-  const boxY = 8;
-  const viewW = canvas.getBoundingClientRect().width || 980;
-  const small = viewW < 520;
-  const boxH = small ? 24 : 28;
-  ctx.font = small ? "bold 12px Arial" : "bold 14px Arial";
+  const boxY = 10;
+  ctx.font = "bold 14px Arial";
   const metrics = ctx.measureText(text);
+  const viewW = canvas.getBoundingClientRect().width || 980;
   const boxW = Math.min(viewW - 24, metrics.width + padX * 2);
+  const boxH = 28;
   const boxX = (viewW - boxW) / 2;
 
   ctx.fillStyle = "rgba(255,255,255,0.86)";
@@ -363,11 +361,6 @@ function drawFieldPattern(x0, y0, w, h, intoPage) {
 function drawScene() {
   const viewW = canvas.getBoundingClientRect().width || 980;
   const viewH = canvas.getBoundingClientRect().height || 560;
-  const small = viewW < 520;
-  const titleX = small ? 16 : 40;
-  const titleY = small ? 24 : 36;
-  const infoY1 = small ? 66 : 86;
-  const infoY2 = small ? 86 : 108;
   ctx.clearRect(0, 0, viewW, viewH);
 
   const bLeft = worldToCanvasX(FIELD_START);
@@ -398,51 +391,49 @@ function drawScene() {
   }
 
   ctx.strokeStyle = "#e76f51";
-  ctx.lineWidth = small ? 4 : 6;
+  ctx.lineWidth = 6;
   ctx.strokeRect(frameLeft, frameTop, frameWidth, frameHeight);
 
   ctx.fillStyle = "#13233f";
-  ctx.font = small ? "bold 12px Arial" : "bold 15px Arial";
-  ctx.fillText("Πλαίσιο με σταθερή ταχύτητα", titleX, titleY);
-  ctx.fillText(state.Bdir > 0 ? "B προς τα μέσα (×)" : "B προς τα έξω (•)", bLeft + 8, Math.max(16, bTop - 16));
-  ctx.fillText(`R = ${state.R.toFixed(2)} Ω`, frameLeft + 8, Math.max(16, frameTop - 12));
-  ctx.fillText(`υ = ${state.u.toFixed(2)} m/s`, Math.min(viewW - 128, frameRight + 10), frameCenterY - 8);
+  ctx.font = "bold 15px Arial";
+  ctx.fillText("Πλαίσιο με σταθερή ταχύτητα", 40, 36);
+  ctx.fillText(state.Bdir > 0 ? "B προς τα μέσα (×)" : "B προς τα έξω (•)", bLeft + 8, bTop - 16);
+  ctx.fillText(`R = ${state.R.toFixed(2)} Ω`, frameLeft + 10, frameTop - 18);
+  ctx.fillText(`υ = ${state.u.toFixed(2)} m/s`, frameRight + 38, frameCenterY - 8);
 
   if (state.currentDir !== "-" && state.showCurrentVectors) {
     const clockwise = state.currentDir === "Ωρολογιακά";
-    const topY = frameTop - (small ? 8 : 10);
-    const bottomY = frameBottom + (small ? 8 : 10);
-    const currentArrow = small ? 34 : 48;
+    const topY = frameTop - 10;
+    const bottomY = frameBottom + 10;
     if (clockwise) {
-      drawArrow(frameLeft + 10, topY, currentArrow, 0, "#1d3557", "");
-      drawArrow(frameRight + 10, frameTop + 10, 0, currentArrow, "#1d3557", "");
-      drawArrow(frameRight - 10, bottomY, -currentArrow, 0, "#1d3557", "");
-      drawArrow(frameLeft - 10, frameBottom - 10, 0, -currentArrow, "#1d3557", "");
+      drawArrow(frameLeft + 10, topY, 48, 0, "#1d3557", "");
+      drawArrow(frameRight + 10, frameTop + 10, 0, 48, "#1d3557", "");
+      drawArrow(frameRight - 10, bottomY, -48, 0, "#1d3557", "");
+      drawArrow(frameLeft - 10, frameBottom - 10, 0, -48, "#1d3557", "");
     } else {
-      drawArrow(frameRight - 10, topY, -currentArrow, 0, "#1d3557", "");
-      drawArrow(frameLeft - 10, frameTop + 10, 0, currentArrow, "#1d3557", "");
-      drawArrow(frameLeft + 10, bottomY, currentArrow, 0, "#1d3557", "");
-      drawArrow(frameRight + 10, frameBottom - 10, 0, -currentArrow, "#1d3557", "");
+      drawArrow(frameRight - 10, topY, -48, 0, "#1d3557", "");
+      drawArrow(frameLeft - 10, frameTop + 10, 0, 48, "#1d3557", "");
+      drawArrow(frameLeft + 10, bottomY, 48, 0, "#1d3557", "");
+      drawArrow(frameRight + 10, frameBottom - 10, 0, -48, "#1d3557", "");
     }
     ctx.fillStyle = "#1d3557";
-    ctx.font = small ? "bold 12px Arial" : "bold 14px Arial";
+    ctx.font = "bold 14px Arial";
     ctx.fillText(`Iεπ: ${state.currentDir}`, frameLeft, frameBottom + 30);
   }
 
   if (state.showVectors) {
     const centerX = (frameLeft + frameRight) / 2;
     const centerY = (frameTop + frameBottom) / 2;
-    const velArrow = small ? 42 : 72;
-    drawArrow(frameRight + 16, centerY + 8, velArrow, 0, "#f77f00", "υ");
+    drawArrow(frameRight + 20, centerY + 8, 72, 0, "#f77f00", "υ");
     if (state.Fmag > 0.0001) {
-      drawArrow(centerX, centerY + (small ? 22 : 30), small ? -38 : -60, 0, "#457b9d", "F_L");
+      drawArrow(centerX, centerY + 30, -60, 0, "#457b9d", "F_L");
     }
   }
 
   ctx.fillStyle = "#0f1c33";
-  ctx.font = small ? "12px Arial" : "14px Arial";
-  ctx.fillText(`x = ${state.x.toFixed(2)} m`, titleX, infoY1);
-  ctx.fillText(`Φ = ${state.phi.toFixed(3)} Wb`, titleX, infoY2);
+  ctx.font = "14px Arial";
+  ctx.fillText(`x = ${state.x.toFixed(2)} m`, 40, 86);
+  ctx.fillText(`Φ = ${state.phi.toFixed(3)} Wb`, 40, 108);
   drawCanvasStatus(statusValue.textContent);
 }
 
