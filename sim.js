@@ -42,6 +42,31 @@ const FIELD_END = 6.5;
 const BASE_TIME_SCALE = 0.75;
 const TRACE_MAX = 5000;
 
+function resizeCanvasToDisplaySize(targetCanvas, targetCtx, fallbackWidth, fallbackHeight) {
+  if (!targetCanvas || !targetCtx) {
+    return;
+  }
+  const rect = targetCanvas.getBoundingClientRect();
+  const cssWidth = Math.max(1, Math.floor(rect.width || fallbackWidth));
+  const cssHeight = Math.max(1, Math.floor(rect.height || fallbackHeight));
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const nextWidth = Math.floor(cssWidth * dpr);
+  const nextHeight = Math.floor(cssHeight * dpr);
+
+  if (targetCanvas.width !== nextWidth || targetCanvas.height !== nextHeight) {
+    targetCanvas.width = nextWidth;
+    targetCanvas.height = nextHeight;
+  }
+  targetCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function resizeCanvases() {
+  resizeCanvasToDisplaySize(canvas, ctx, 980, 560);
+  if (diagCanvas && dctx) {
+    resizeCanvasToDisplaySize(diagCanvas, dctx, 980, 460);
+  }
+}
+
 const state = {
   B: Number(bSlider.value),
   Bdir: 1,
@@ -231,7 +256,8 @@ function updateMeasurements() {
 
 function worldToCanvasX(xWorld) {
   const pad = 70;
-  return pad + ((xWorld - WORLD_LEFT) / (WORLD_RIGHT - WORLD_LEFT)) * (canvas.width - 2 * pad);
+  const viewW = canvas.getBoundingClientRect().width || 980;
+  return pad + ((xWorld - WORLD_LEFT) / (WORLD_RIGHT - WORLD_LEFT)) * (viewW - 2 * pad);
 }
 
 function worldToCanvasY(yNorm) {
@@ -280,9 +306,10 @@ function drawCanvasStatus(text) {
   const boxY = 10;
   ctx.font = "bold 14px Arial";
   const metrics = ctx.measureText(text);
-  const boxW = Math.min(canvas.width - 24, metrics.width + padX * 2);
+  const viewW = canvas.getBoundingClientRect().width || 980;
+  const boxW = Math.min(viewW - 24, metrics.width + padX * 2);
   const boxH = 28;
-  const boxX = (canvas.width - boxW) / 2;
+  const boxX = (viewW - boxW) / 2;
 
   ctx.fillStyle = "rgba(255,255,255,0.86)";
   ctx.strokeStyle = "#b7c7da";
@@ -332,7 +359,9 @@ function drawFieldPattern(x0, y0, w, h, intoPage) {
 }
 
 function drawScene() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const viewW = canvas.getBoundingClientRect().width || 980;
+  const viewH = canvas.getBoundingClientRect().height || 560;
+  ctx.clearRect(0, 0, viewW, viewH);
 
   const bLeft = worldToCanvasX(FIELD_START);
   const bRight = worldToCanvasX(FIELD_END);
@@ -577,33 +606,35 @@ function drawDiagnosticsPanel() {
     return;
   }
 
-  dctx.clearRect(0, 0, diagCanvas.width, diagCanvas.height);
+  const viewW = diagCanvas.getBoundingClientRect().width || 980;
+  const viewH = diagCanvas.getBoundingClientRect().height || 460;
+  dctx.clearRect(0, 0, viewW, viewH);
 
   const pad = 12;
   const graphCfg = graphSeriesConfig();
-  const narrow = diagCanvas.width < 760;
+  const narrow = viewW < 760;
 
   if (narrow) {
-    const fullW = diagCanvas.width - pad * 2;
-    const graphH = Math.floor(diagCanvas.height * 0.47);
-    const barsH = Math.floor(diagCanvas.height * 0.23);
-    const formulaH = diagCanvas.height - graphH - barsH - pad * 4;
+    const fullW = viewW - pad * 2;
+    const graphH = Math.floor(viewH * 0.47);
+    const barsH = Math.floor(viewH * 0.23);
+    const formulaH = viewH - graphH - barsH - pad * 4;
     drawMiniSeriesBox(pad, pad, fullW, graphH, graphCfg.label, state.trace, graphCfg.key, graphCfg.color, state.yMin, state.yMax, state.tAxisMax);
     drawLiveBars(pad, pad * 2 + graphH, fullW, barsH);
     drawFormulaBox(pad, pad * 3 + graphH + barsH, fullW, formulaH);
   } else {
-    const leftW = Math.floor(diagCanvas.width * 0.5);
-    const rightW = diagCanvas.width - leftW - pad * 3;
+    const leftW = Math.floor(viewW * 0.5);
+    const rightW = viewW - leftW - pad * 3;
     const gx = pad;
     const gy = pad;
     const gw = leftW;
-    const graphH = diagCanvas.height - pad * 2;
+    const graphH = viewH - pad * 2;
     drawMiniSeriesBox(gx, gy, gw, graphH, graphCfg.label, state.trace, graphCfg.key, graphCfg.color, state.yMin, state.yMax, state.tAxisMax);
 
     const rightX = gx + gw + pad;
     const barsH = 165;
     drawLiveBars(rightX, gy, rightW, barsH);
-    drawFormulaBox(rightX, gy + barsH + 8, rightW, diagCanvas.height - (gy + barsH + 8) - pad);
+    drawFormulaBox(rightX, gy + barsH + 8, rightW, viewH - (gy + barsH + 8) - pad);
   }
 }
 
@@ -634,6 +665,7 @@ function tick(timestamp) {
     recalcMeasured();
   }
 
+  resizeCanvases();
   syncSlidersUI();
   syncPlayPauseUI();
   updateMeasurements();
@@ -735,6 +767,9 @@ if (graphModeSelect) {
     updateTraceBounds();
   });
 }
+
+window.addEventListener("resize", resizeCanvases);
+window.addEventListener("orientationchange", resizeCanvases);
 
 resetSimulation();
 requestAnimationFrame(tick);

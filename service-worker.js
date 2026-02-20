@@ -1,4 +1,4 @@
-const CACHE_NAME = "kinisi-plaisiou-v1";
+const CACHE_NAME = "kinisi-plaisiou-v2";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -65,6 +65,29 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith(".json");
 
   if (isStatic) {
+    const isScriptOrStyle =
+      req.destination === "script" ||
+      req.destination === "style" ||
+      url.pathname.endsWith(".js") ||
+      url.pathname.endsWith(".css") ||
+      url.pathname.endsWith(".json");
+
+    if (isScriptOrStyle) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            return res;
+          })
+          .catch(async () => {
+            const cache = await caches.open(CACHE_NAME);
+            return (await cache.match(req)) || Response.error();
+          })
+      );
+      return;
+    }
+
     event.respondWith(
       caches.match(req).then((cached) => {
         if (cached) {
